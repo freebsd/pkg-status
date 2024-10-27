@@ -1,2 +1,3 @@
 venv
 *.pyc
+gather_to_mongod.env
