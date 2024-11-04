@@ -5,9 +5,17 @@ import sys
 import pymongo
 import re
 import os
+from time import time
+
+TRIM_YEARS = os.getenv("PKGSTATUS_GATHER_TRIM_YEARS")
 
 def fetch_data(server, path):
-    url = f"http://{server}{path}"
+    proxy_server = os.getenv("PKGSTATUS_GATHER_PROXY_SERVER")
+
+    if proxy_server:
+        url = f"{proxy_server}/{server.split('.')[0]}{path}"
+    else:
+        url = f"http://{server}{path}"
     print(f"Fetching {url}")
     try:
         response = requests.get(url, timeout=0.5)
@@ -62,6 +70,29 @@ def build_id_to_server(buildid):
 def build_id_to_buildname(buildid):
     return buildid.split(':')[4]
 
+def trim_period():
+    if TRIM_YEARS is None:
+        return None
+    return int(time()) - (365 * 24 * 60 * 60 * int(TRIM_YEARS))
+
+"""
+Trim old builds
+A 2-step delete is needed. builds and ports have the same _id.
+We could delete from ports only the builds that we trim, but for
+good measure and so this script is interruptable, always trim
+from ports for which there is no corresponding known build.
+"""
+def trim_builds():
+    if trim_period() is None:
+        return
+    print(f"Trimming builds older than {TRIM_YEARS} year(s) old.")
+    result = db.builds.delete_many({'started': {'$lt': trim_period()}})
+    print(f"Trimmed {result.deleted_count} old builds.")
+    print("Trimming orphaned ports.")
+    build_ids = db.builds.distinct('_id')
+    result = db.ports.delete_many({'_id': {'$nin': build_ids}})
+    print(f"Trimmed {result.deleted_count} orphaned ports.")
+
 def calc_started(build_info):
     if "started" in build_info:
         build_info['started'] = int(build_info['started'])
@@ -91,6 +122,7 @@ def fix_port_origins(ports):
     ports['pkgnames'] = pkgnames
 
 def process_new_failures(build, current=False):
+    previous_build = None
     # Find the previous matching build or skip if there is none. Only consider
     # passing builds.
     if build['type'] in ["package", "qat"]:
@@ -100,14 +132,17 @@ def process_new_failures(build, current=False):
             'status': 'stopped:done:',
             'started': {'$lt': build['started']}}).sort(
                     [('started', pymongo.DESCENDING)]).limit(1))
+        if len(previous_build) == 0:
+            return False
+        previous_build = previous_build[0]
     else:
-        # Compare exp runs to a previous baseline
-        # XXX
+        # XXX: Compare exp runs to a previous baseline
+        # For now consider all failures as new
+        previous_build = build
+
+    if previous_build is None:
         return False
 
-    if len(previous_build) == 0:
-        return False
-    previous_build = previous_build[0]
     print(f"Processing new failures for {build['_id']}. Previous build {previous_build['_id']}")
 
     # Fetch the full port list for both builds to determine changes
@@ -117,6 +152,8 @@ def process_new_failures(build, current=False):
     if current:
         previous_ports = db.ports.find_one({'_id': previous_build['_id']},
                 query_filter)
+        if previous_ports is None:
+            previous_ports = {}
         current_ports = build['ports']
     else:
         ports_list = db.ports.find({
@@ -153,13 +190,17 @@ db = client['pkgstatus']
 qat_sets = ["qat", "baseline", "build-as-user"]
 
 # Repair start times
+print("Reparing build start times.")
 for build_info in db.builds.find({'started': {'$exists': False}}, {"_id": "",
     'snap.now': '', 'snap.elapsed': ''}):
     calc_started(build_info)
     print(f"Setting started to '{build_info['started']}' for {build_info['_id']}")
     db.builds.update_one({'_id': build_info['_id']}, {'$set': {'started': build_info['started']}})
 
+trim_builds()
+
 # Import new data
+print("Importing new data.")
 with open("servers.txt", "r") as f:
     for line in f:
         if line.startswith("#"):
@@ -256,6 +297,12 @@ with open("servers.txt", "r") as f:
                 # Convert and/or calculated started epoch time.
                 calc_started(build_info)
 
+                # If the build is older than the trim period then do
+                # not import it.
+                if trim_period() is not None and build_info['started'] < trim_period():
+                    print(f"Skipping importing too-old build: {buildid}")
+                    continue
+
                 # Trim idle jobs to save db space
                 if "jobs" in build_info:
                     build_info["jobs"] = [job for job in
@@ -284,6 +331,7 @@ with open("servers.txt", "r") as f:
         db.servers.update_one({"_id": server_short}, {"$set": server_info})
 
 # Repair pkgnames
+print("Fixing pkgnames.")
 for portids in db.ports.find({'pkgnames': {'$exists': False}}, {"_id": ""}):
     # Fetch here rather than in the loop due to memory explosion
     ports = db.ports.find_one({'_id': portids['_id']},
@@ -293,6 +341,7 @@ for portids in db.ports.find({'pkgnames': {'$exists': False}}, {"_id": ""}):
     db.ports.update_one({'_id': portids['_id']}, {'$set': ports})
 
 # Process new failures
+print("Processing build failures and stats.")
 for portids in db.ports.find({'new': {'$exists': False}},
         {"_id": ""}).sort([('_id', pymongo.ASCENDING)]):
     # This is not done above as it would load several GB of data.

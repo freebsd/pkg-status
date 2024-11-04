@@ -4,10 +4,6 @@ $(function () {
     });
 });
 
-function flaskUrlFor(endpoint, params) {
-    return '/' + endpoint + '?' + new URLSearchParams(params).toString();
-}
-
 function isNumeric(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
 }
@@ -29,24 +25,26 @@ function filter_icon() {
 }
 
 function poudriere_icon() {
-    return '<img src="/static/poudriere.png">';
+    return '<img src="' + Flask.url_for('static', {'filename': 'poudriere.png'}) + '">';
 }
 
 function linkpoudrierebuild(build) {
     return '<a target="_new" data-bs-toggle="tooltip" title="Poudriere Build" ' +
-        'href="http://' + servers[build.server].host +
-        '/build.html?mastername=' + build.mastername +
-        '&amp;build=' + build.buildname + '">' + poudriere_icon() + '</a>';
+        'href="' +
+        Flask.url_for('poudriere', {'server': build.server,
+            'uri': 'build.html', 'mastername': build.mastername,
+            'build': build.buildname}) +
+        '">' + poudriere_icon() + '</a>';
 }
 
 function linkbuild(build) {
     return '<a data-bs-toggle="tooltip" title="All builds matching buildname ' +
         build.buildname + '" href="' +
-        flaskUrlFor('builds', { 'buildname': build.buildname }) + '">' +
+        Flask.url_for('builds', {'buildname': build.buildname}) + '">' +
         filter_icon() + '</a>' +
         linkpoudrierebuild(build) +
         '<a data-bs-toggle="tooltip" title="Build ' + build._id + '" href="' +
-        flaskUrlFor('build', { 'buildid': build._id }).replace('build?buildid=', 'builds/') + '">' +
+        Flask.url_for('build', {'buildid': build._id}) + '">' +
         build.buildname + '</a>';
 }
 
@@ -73,7 +71,7 @@ function linkset(setname) {
     }
 
     return '<a data-bs-toggle="tooltip" title="All builds matching set ' +
-        setname + '" href="' + flaskUrlFor('builds', { 'setname': setname }) +
+        setname + '" href="' + Flask.url_for('builds', {'setname': setname}) +
         '"><span class="bi bi-funnel-fill"></span></a>' +
         link + setname;
 }
@@ -81,23 +79,25 @@ function linkset(setname) {
 function linkserver(build) {
     return '<a data-bs-toggle="tooltip" title="All builds matching server ' +
     build.server + '" href="' +
-    flaskUrlFor('builds', { 'server': build.server }) + '">' +
+    Flask.url_for('builds', {'server': build.server}) + '">' +
     filter_icon() + '</a>' +
     '<a target="_new" data-bs-toggle="tooltip" title="Poudriere Server" ' +
-    'href="http://' + servers[build.server].host + '/">' +
-    poudriere_icon() + '</a>' +
+        'href="' +
+        Flask.url_for('poudriere', {'server': build.server}) +
+        '">' + poudriere_icon() + '</a>' +
     build.server;
 }
 
 function linkjail(build) {
     return '<a data-bs-toggle="tooltip" title="All builds matching jail ' +
     build.jailname + '" href="' +
-    flaskUrlFor('builds', { 'jailname': build.jailname }) + '">' +
+    Flask.url_for('builds', {'jailname': build.jailname}) + '">' +
     filter_icon() + '</a>' +
     '<a target="_new" data-bs-toggle="tooltip" title="Poudriere Jail" ' +
-    'href="http://' + servers[build.server].host +
-    '/jail.html?mastername=' + build.mastername + '">' + poudriere_icon() +
-    '</a>' + build.jailname;
+        'href="' +
+        Flask.url_for('poudriere', {'server': build.server,
+            'uri': 'jail.html', 'mastername': build.mastername}) +
+        '">' + poudriere_icon() + '</a>' + build.jailname;
 }
 
 function format_duration(duration) {
@@ -129,7 +129,7 @@ function format_stats(value, build, colname) {
     html = value;
     if (build.new_stats && build.new_stats[colname]) {
         html += '&nbsp<a href="' +
-            flaskUrlFor('build', { 'buildid': build._id }).replace('build?buildid=', 'builds/') +
+            Flask.url_for('build', {'buildid': build._id}) +
             '#new_' + colname + '"> (+' + build.new_stats[colname] + ')</a>';
     }
     return html;

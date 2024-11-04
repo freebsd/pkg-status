@@ -1,7 +1,8 @@
 import datetime
 import json
-from flask import Flask, jsonify, render_template, request, make_response, url_for
+from flask import Flask, jsonify, redirect, render_template, request, make_response, url_for
 from flask_bootstrap import Bootstrap5
+from flask_jsglue import JSGlue
 from flask_pymongo import PyMongo
 from urllib.parse import urlencode
 import flask_pymongo as pymongo
@@ -15,6 +16,7 @@ def create_app():
     app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/pkgstatus')
 
     Bootstrap5(app)
+    jsglue = JSGlue(app)
     mongo = PyMongo(app)
     filter_keys = ['all', 'type', 'setname', 'buildname', 'jailname', 'server']
 
@@ -52,18 +54,12 @@ def create_app():
                     if field in ports and origin in ports[field]:
                         ports[field][fixed_origin] = ports[field].pop(origin)
 
-    def get_server_map():
-        return {x["_id"]:x for x in list(mongo.db.servers.find({},
-            {'masternames': 0}))}
+    def get_server(server):
+        return mongo.db.servers.find_one({'_id': server}, {'masternames': 0})
 
     @app.route('/')
     def index():
         return builds()
-
-    @app.route('/servers.js')
-    def servers_js():
-        return make_response("var servers = %s;" % (json.dumps(get_server_map())),
-                200, {'Content-Type': 'text/javascript'})
 
     def _get_filter():
         query = {'latest': True}
@@ -112,7 +108,6 @@ def create_app():
     @app.route('/builds')
     def builds():
         results = _builds()
-        results['servers'] = get_server_map()
         return render_template('builds.html', **results)
 
     def _build(buildid):
@@ -130,8 +125,28 @@ def create_app():
     @app.route('/builds/<buildid>')
     def build(buildid):
         results = _build(buildid)
-        results['servers'] = get_server_map()
         return render_template('build.html', **results)
+
+    """
+    Handle redirecting to server's Poudriere.
+    This is done so that a frontend transparent proxy can be setup (like in
+    nginx) to proxy to the real if preferred. Otherwise it will redirect the
+    client to the server.
+    """
+    @app.route('/<string:server>/', defaults={'uri': ''})
+    @app.route('/<string:server>/<path:uri>')
+    def poudriere(server, uri):
+        query_string = request.query_string.decode('utf-8')
+        proxy_server = os.getenv("PKGSTATUS_PROXY_SERVER")
+        if proxy_server is not None:
+            base_url = f"{proxy_server}/{server}/{uri}"
+        else:
+            server = get_server(server)
+            if server is None:
+                return "Server not found", 404
+            base_url = f"http://{server['host']}/{uri}"
+        redirect_url = f"{base_url}?{query_string}" if query_string else base_url
+        return redirect(redirect_url)
 
     return app
 
