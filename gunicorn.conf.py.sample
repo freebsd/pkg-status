@@ -1,0 +1,23 @@
+chdir = '/home/pkg-status/pkg-status.freebsd.org'
+bind = 'unix:/tmp/pkg-status.sock'
+backlog = 2048
+workers = 6
+worker_class = 'sync'
+worker_connections = 1000
+timeout = 30
+keepalive = 2
+spew = False
+wsgi_app = 'pkgstatus:app'
+user = 'pkg-status'
+group = 'pkg-status'
+raw_env = [
+    'MONGO_URI=mongodb://localhost:27017/pkgstatus',
+    'PKGSTATUS_PROXY_SERVER=https://pkg-status.freebsd.org',
+]
+
+pidfile = '/var/run/gunicorn-worker.pid'
+
+errorlog = '/var/log/pkg-status/gunicorn_error.log'
+accesslog = '/var/log/pkg-status/gunicorn_access.log'
+loglevel = 'info'
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
