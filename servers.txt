@@ -10,8 +10,6 @@ exp:gohan03.nyi.freebsd.org
 exp:gohan04.nyi.freebsd.org
 exp:gohan05.nyi.freebsd.org
 exp:gohan06.chi.freebsd.org
-package:beefy7.nyi.freebsd.org
-package:beefy8.nyi.freebsd.org
 package:beefy11.nyi.freebsd.org
 package:beefy13.nyi.freebsd.org
 package:beefy14.nyi.freebsd.org
@@ -26,3 +24,5 @@ package:ampere3.nyi.freebsd.org
 package:beefy20.chi.freebsd.org
 package:beefy21.chi.freebsd.org
 package:beefy22.chi.freebsd.org
+package:beefy23.chi.freebsd.org
+package:beefy24.chi.freebsd.org
