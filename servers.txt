@@ -26,3 +26,5 @@ package:beefy21.chi.freebsd.org
 package:beefy22.chi.freebsd.org
 package:beefy23.chi.freebsd.org
 package:beefy24.chi.freebsd.org
+package:ampere4.chi.freebsd.org
+package:ampere5.chi.freebsd.org
