@@ -18,7 +18,7 @@ def fetch_data(server, path):
         url = f"http://{server}{path}"
     print(f"Fetching {url}")
     try:
-        response = requests.get(url, timeout=0.5)
+        response = requests.get(url, timeout=30)
     except requests.exceptions.ConnectionError:
         print(f"Connection error to {url}")
         return None
