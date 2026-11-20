@@ -8,7 +8,7 @@ if [ "$1" = "venv" ]; then
 fi
 
 if [ -r gather_to_mongod.env ]; then
-	. gather_to_mongo.env
+	. gather_to_mongod.env
 fi
 
 python3 -u gather_to_mongo.py
