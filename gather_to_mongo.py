@@ -258,6 +258,7 @@ with open("servers.txt", "r") as f:
                         {"$unset": {"latest": ""}})
                     db.builds.update_one({"_id": buildid},
                             {"$set": {"latest": True}})
+                    print(f"Setting build to latest: {buildid}")
                     continue
                 buildid = build_id(setname, ptname, jailname, buildname, server)
                 # Ignore some legacy builds
