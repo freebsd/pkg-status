@@ -251,8 +251,9 @@ with open("servers.txt", "r") as f:
             # XXX: Archive deleted builds
             for buildname, build_info_sparse in builds.items():
                 if buildname == "latest":
-                    # The jail .data.json "latest" can be latest-done; the
-                    # top-level one follows the latest symlink.
+                    # Before poudriere a45f101a9 (3.4: c8f55cef9) the jail
+                    # .data.json "latest" could name the latest-done build;
+                    # the top-level one always follows the latest symlink.
                     buildname = latest.get('buildname', build_info_sparse)
                     buildid = build_id(setname, ptname, jailname, buildname, server)
                     db.builds.update_many({"mastername": mastername,
