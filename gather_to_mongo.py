@@ -268,6 +268,7 @@ with open("servers.txt", "r") as f:
                 if build is not None and build["status"].startswith((
                     "stopped", "done", "crashed")
                 ):
+                    print(f"Skipping importing '{build["status"]}' build: {buildid}")
                     continue
 
                 # Fetch the full build information
