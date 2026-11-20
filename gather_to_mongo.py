@@ -264,9 +264,11 @@ with open("servers.txt", "r") as f:
                 if "status" not in build_info_sparse:
                     continue
                 build = db.builds.find_one({"_id": buildid})
-                # Don't update existing "stopped:" builds.
-                if build is not None and build["status"].startswith("stopped"):
-                        continue
+                # Don't update finished builds.
+                if build is not None and build["status"].startswith((
+                    "stopped", "done", "crashed")
+                ):
+                    continue
 
                 # Fetch the full build information
                 build_info = gather_build_info(server, mastername, buildname)
