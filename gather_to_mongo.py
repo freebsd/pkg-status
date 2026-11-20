@@ -250,6 +250,8 @@ with open("servers.txt", "r") as f:
 
             # XXX: Archive deleted builds
             for buildname, build_info_sparse in builds.items():
+                if buildname == "latest-done":
+                    continue
                 if buildname == "latest":
                     # Before poudriere a45f101a9 (3.4: c8f55cef9) the jail
                     # .data.json "latest" could name the latest-done build;
