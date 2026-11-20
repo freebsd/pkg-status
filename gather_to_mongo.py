@@ -263,6 +263,7 @@ with open("servers.txt", "r") as f:
                 buildid = build_id(setname, ptname, jailname, buildname, server)
                 # Ignore some legacy builds
                 if "status" not in build_info_sparse:
+                    print(f"Skipping no status build: {buildid}")
                     continue
                 build = db.builds.find_one({"_id": buildid})
                 # Don't update finished builds.
@@ -275,6 +276,7 @@ with open("servers.txt", "r") as f:
                 # Fetch the full build information
                 build_info = gather_build_info(server, mastername, buildname)
                 if build_info is None:
+                    print(f"Skipping no build info build: {buildid}")
                     continue
 
                 # XXX: This is not importable due to pkgname keys having '.'
